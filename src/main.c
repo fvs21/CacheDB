@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include "cache.h"
 
 #define PORT 8080
 
@@ -33,19 +34,30 @@ int main(int argc, char** argv) {
 		exit(0);
 	}
 
-	//take the maximum number of pending connections
+	//start listening for connections and take the maximum number of pending connections
 	if(listen(server, 10) != 0) {
 		perror("Server failed to listen.");
 		exit(0);
 	}
 
-	
+
 	for(;;) {
 		struct sockaddr_in clientAddress;
 		socklen_t client_addr_len = sizeof(clientAddress);
-		int *client = malloc(sizeof(int));
+		int *client = malloc(sizeof(int)); //incoming client
 
+		//accept a client connection
+		if((*client = accept(server, (struct sockaddr *)&clientAddress, &clientAddress)) < 0) {
+			perror("Failed to accept an incomming client connection.");
+			continue;
+		}
 
+		pthread_t thread_id;
+		pthread_create(
+			&thread_id, //variable where the proccess id will be stored
+			NULL, //default thread attributes
+			handleRequest, //function to run
+			(void *)client //function parameters
+		);
 	}
-
 }
