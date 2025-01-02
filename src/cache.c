@@ -1,8 +1,10 @@
 #include "cache.h"
 #include <sys/socket.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-void handleRequest(void *arg) {
+void *handleRequest(void *arg) {
     int client = *((int *) arg);
     char* buffer = (char *) malloc(BUFFER_SIZE * sizeof(char));
 
@@ -14,17 +16,21 @@ void handleRequest(void *arg) {
     );
 
     if(bytesRecieved > 0) {
-        CacheAction action;
-
+        Statement statement;
+        StatementResult statementResult = prepareStatement(buffer, &statement);
     }
+
+    free(buffer);
+    free(arg);
+    return NULL;
 }
 
-StatementResult prepareStatement(char* buffer, CacheAction* action) {
+StatementResult prepareStatement(char* buffer, Statement* statement) {
     if(strncmp(buffer, "set", 3) == 0) {
-        action = CACHE_SET;
+        statement->action = CACHE_SET;
         return PREPARE_SUCCESS;
     } else if(strncmp(buffer, "delete", 6) == 0) {
-        action = CACHE_DELETE;
+        statement->action = CACHE_DELETE;
         return PREPARE_SUCCESS;
     }
 

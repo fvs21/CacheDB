@@ -9,9 +9,11 @@
 
 #define PORT 8080
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) {	
 	int server;
 	struct sockaddr_in serverAddress;
+
+	printf("Initializing server...\n");
 
 	server = socket(
 		AF_INET, //use ipv4
@@ -40,6 +42,7 @@ int main(int argc, char** argv) {
 		exit(0);
 	}
 
+	printf("Server initialized.\n");
 
 	for(;;) {
 		struct sockaddr_in clientAddress;
@@ -47,17 +50,18 @@ int main(int argc, char** argv) {
 		int *client = malloc(sizeof(int)); //incoming client
 
 		//accept a client connection
-		if((*client = accept(server, (struct sockaddr *)&clientAddress, &clientAddress)) < 0) {
+		if((*client = accept(server, (struct sockaddr *)&clientAddress, &client_addr_len)) < 0) {
 			perror("Failed to accept an incomming client connection.");
 			continue;
 		}
 
-		pthread_t thread_id;
+		pthread_t threadId;
 		pthread_create(
-			&thread_id, //variable where the proccess id will be stored
+			&threadId, //variable where the proccess id will be stored
 			NULL, //default thread attributes
 			handleRequest, //function to run
 			(void *)client //function parameters
 		);
+		pthread_detach(threadId);
 	}
 }
