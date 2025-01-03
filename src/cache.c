@@ -125,16 +125,6 @@ StatementResult prepareStatement(char* buffer, Statement* statement) {
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
-struct tm calculateCacheExpirationDate(float milliseconds) {
-    time_t now = time(NULL);
-
-    struct tm now_tm = *localtime(&now);
-
-    now_tm.tm_sec += (milliseconds / 1000);
-
-    return now_tm;
-}
-
 unsigned int hash(const char* key) {
     unsigned long hash = 5381;
     for(int c = 0; c<strlen(key); c++) {
