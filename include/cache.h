@@ -66,6 +66,5 @@ ExecuteResult executeDelete(Statement* statement, Bucket* table);
 ExecuteResult executeGet(Statement* statement, Bucket* table, int client);
 void sendDataToClient(int client, const char* data);
 unsigned int hash(const char* key);
-bool checkIfExpired(struct tm date);
 
 #endif  

@@ -20,7 +20,6 @@ The cache supports 3 commands: set, get, delete
 cd src
 make
 ./cache
-
 ```
 
 ### For the client
@@ -28,7 +27,6 @@ make
 cd src
 make
 ./client
-
 ```
 
 ## Commands for client: 

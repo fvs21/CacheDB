@@ -235,26 +235,3 @@ void sendDataToClient(int client, const char* data) {
     send(client, data, strlen(data), 0);
     return;
 }
-
-bool checkIfExpired(struct tm date) {
-    time_t t = time(NULL);
-    struct tm now = *localtime(&t);
-
-    if(now.tm_mday > date.tm_mday) {
-        return true;
-    }
-
-    if(now.tm_hour > date.tm_hour) {
-        return true;
-    }
-
-    if(now.tm_min > date.tm_min) {
-        return true;
-    }
-
-    if(now.tm_sec >= date.tm_sec) {
-        return true;
-    }
-
-    return false;
-}
