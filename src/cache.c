@@ -206,13 +206,17 @@ ExecuteResult executeDelete(Statement* statement, Bucket* table) {
 
     int hashIndex = hash(key);
     Bucket *bucket = &table[hashIndex];
-
     Node* tableElement = bucket->head;
 
-    if(tableElement->tableData.key == key) {
+    if(tableElement == NULL) {
+        return EXECUTE_SUCCESS;
+    }
+
+    if(strcmp(tableElement->tableData.key, key) == 0) {
         bucket->head = tableElement->next;
         bucket->numOfElements--;
         free(tableElement);
+        return EXECUTE_SUCCESS;
     }
     
     for(Node* n = tableElement->next; n != NULL; n = n->next, tableElement = tableElement->next) {
@@ -220,7 +224,7 @@ ExecuteResult executeDelete(Statement* statement, Bucket* table) {
             tableElement->next = n->next;
             bucket->numOfElements--;
             free(n);
-            return EXECUTE_SUCCESS;
+            break;
         }
     }
 
