@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "cache.h"
 
 #define PORT 8080
@@ -42,26 +43,22 @@ int main(int argc, char** argv) {
 		exit(0);
 	}
 
+	initializeCache();
 	printf("Server initialized.\n");
 
-	for(;;) {
-		struct sockaddr_in clientAddress;
-		socklen_t client_addr_len = sizeof(clientAddress);
-		int *client = malloc(sizeof(int)); //incoming client
+	struct sockaddr_in clientAddress;
+	socklen_t client_addr_len = sizeof(clientAddress);
+	int *client = malloc(sizeof(int)); //incoming client
 
-		//accept a client connection
-		if((*client = accept(server, (struct sockaddr *)&clientAddress, &client_addr_len)) < 0) {
-			perror("Failed to accept an incomming client connection.");
-			continue;
-		}
-
-		pthread_t threadId;
-		pthread_create(
-			&threadId, //variable where the proccess id will be stored
-			NULL, //default thread attributes
-			handleRequest, //function to run
-			(void *)client //function parameters
-		);
-		pthread_detach(threadId);
+	//accept a client connection
+	if((*client = accept(server, (struct sockaddr *)&clientAddress, &client_addr_len)) < 0) {
+		perror("Failed to accept an incomming client connection.");
+		exit(0);
 	}
+
+	while(1) {
+		handleRequest((void *) client);
+	}
+
+	close(*client);
 }

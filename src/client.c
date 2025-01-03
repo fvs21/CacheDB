@@ -11,31 +11,26 @@
 #define PORT 8080
 
 void startQueries(int socketFd) {
-    char* buffer = (char *) malloc(BUFFER_SIZE);
-
-    for(;;) {
-        size_t allocated = 0;
-
-        bzero(buffer, BUFFER_SIZE);
+    char buffer[BUFFER_SIZE];
+    while(1) {
+        int n = 0;
+        bzero(buffer, sizeof(buffer));
         printf("cache > ");
         
-        ssize_t bytes_read = getline(&buffer, &allocated, stdin);
-        if(bytes_read <= 0) {
-            perror("Error reading input");
-            exit(0);
-        }
-        buffer[bytes_read - 1] = 0;
+        while ((buffer[n++] = getchar()) != '\n') {}
 
         if(strncmp(buffer, ".exit", 5) == 0) {
             printf("Exiting...\n");
             break;
         }
 
-        write(socketFd, buffer, bytes_read);
-        bzero(buffer, BUFFER_SIZE);
-        recv(socketFd, buffer, BUFFER_SIZE, 0);
+        send(socketFd, buffer, sizeof(buffer), 0);
+        bzero(buffer, sizeof(buffer));
+        read(socketFd, buffer, BUFFER_SIZE);
         printf("%s\n", buffer);
     }
+
+
     free(buffer);
 }
 

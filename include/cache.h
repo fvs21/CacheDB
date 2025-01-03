@@ -17,7 +17,6 @@
 typedef struct {
     char key[KEY_SIZE];
     char value[VALUE_SIZE];
-    struct tm expiration;
 } TableData;
 
 typedef enum {
@@ -59,14 +58,14 @@ void *handleRequest(void *arg);
 
 StatementResult prepareStatement(char* buffer, Statement* statement);
 
-struct tm calculateCacheExpirationDate(int milliseconds);
+struct tm calculateCacheExpirationDate(float milliseconds);
 
+void initializeCache();
 ExecuteResult executeSet(Statement* statement, Bucket* table);
 ExecuteResult executeDelete(Statement* statement, Bucket* table);
 ExecuteResult executeGet(Statement* statement, Bucket* table, int client);
 void sendDataToClient(int client, const char* data);
 unsigned int hash(const char* key);
 bool checkIfExpired(struct tm date);
-bool bucketIndexEmpty(Bucket *bucket, int index);
 
 #endif  
