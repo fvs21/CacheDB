@@ -56,7 +56,6 @@ void *handleRequest(void *arg) {
                 if(statement.action == CACHE_GET) {
                     break;
                 }
-
                 sendDataToClient(client, "Success\n");
                 break;  
             case(EXECUTE_CACHE_FULL):
@@ -67,8 +66,6 @@ void *handleRequest(void *arg) {
                 break;
         }
     }
-
-    //free(buffer);
     
     return NULL;
 }
@@ -81,7 +78,7 @@ StatementResult prepareStatement(char* buffer, Statement* statement) {
 
         int args_assigned = sscanf(
             buffer,
-            "set %s %s", //set "key" "value"
+            "set %250s %5120c", //set "key" "value"
             (key_value_to_insert->key),
             (key_value_to_insert->value)
         );
@@ -98,13 +95,14 @@ StatementResult prepareStatement(char* buffer, Statement* statement) {
 
         int args_assigned = sscanf(
             buffer,
-            "get %s",
+            "get %250s",
             key
         );
 
         if(args_assigned < 1) {
             return PREPARE_SYNTAX_ERROR;
         }
+
         return PREPARE_SUCCESS;
     } else if(strncmp(buffer, "get", 3) == 0) {
         statement->action = CACHE_GET;
@@ -113,7 +111,7 @@ StatementResult prepareStatement(char* buffer, Statement* statement) {
 
         int args_assigned = sscanf(
             buffer,
-            "get %s",
+            "get %250s",
             key
         );
 
@@ -138,6 +136,7 @@ ExecuteResult executeSet(Statement* statement, Bucket* table) {
     TableData key_value_to_insert = *((TableData *) &(statement->data));
     int hashIndex = hash(key_value_to_insert.key);
 
+
     Bucket* bucket = &table[hashIndex];
     Node* head = bucket->head; //wow
 
@@ -148,8 +147,7 @@ ExecuteResult executeSet(Statement* statement, Bucket* table) {
             return EXECUTE_MEMORY_ERROR;
         }
         memcpy(&(node->tableData.key), &(key_value_to_insert.key), sizeof(key_value_to_insert.key));
-        memcpy(&(node->tableData.value), &(key_value_to_insert.value), sizeof(key_value_to_insert.key));
-        //*node->tableData.expiration = key_value_to_insert.expiration;
+        memcpy(&(node->tableData.value), &(key_value_to_insert.value), sizeof(key_value_to_insert.value));
         node->next = NULL;
         bucket->head = node; //wow
         bucket->numOfElements = 1;

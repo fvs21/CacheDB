@@ -7,12 +7,12 @@
 #define BUFFER_SIZE 10490
 
 #define KEY_SIZE 250 //bytes
-#define VALUE_SIZE 10240 //10 kb
+#define VALUE_SIZE 5120 //10 kb
 
-#define BUCKET_MAX_SIZE 52450 //bytes
+#define BUCKET_MAX_SIZE 26850 //bytes
 #define BUCKET_MAX_ELEMS 5
 
-#define BUCKETS 1200
+#define BUCKETS 2400
 
 typedef struct {
     char key[KEY_SIZE];

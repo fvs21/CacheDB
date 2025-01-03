@@ -29,9 +29,6 @@ void startQueries(int socketFd) {
         read(socketFd, buffer, BUFFER_SIZE);
         printf("%s\n", buffer);
     }
-
-
-    free(buffer);
 }
 
 int main() {
