@@ -17,66 +17,66 @@ void initializeCache() {
 void *handleRequest(void *arg) {
     while(1) {
         int client = *((int *) arg);
-    char buffer[BUFFER_SIZE];
+        char buffer[BUFFER_SIZE];
 
-    ssize_t bytesRecieved = recv(
-        client, //receive this client request data
-        &buffer, //buffer to store incoming data
-        BUFFER_SIZE, 
-        0
-    );
+        ssize_t bytesRecieved = recv(
+            client, //receive this client request data
+            &buffer, //buffer to store incoming data
+            BUFFER_SIZE, 
+            0
+        );
 
-    printf("Received %zd bytes from client %d\n", bytesRecieved, client);
+        printf("Received %zd bytes from client %d\n", bytesRecieved, client);
 
-    if(bytesRecieved > 0) {
-        Statement statement;
+        if(bytesRecieved > 0) {
+            Statement statement;
 
-        clock_t start = clock(); //start the timer
+            clock_t start = clock(); //start the timer
 
-        StatementResult statementResult = prepareStatement(buffer, &statement);
+            StatementResult statementResult = prepareStatement(buffer, &statement);
 
-        switch(statementResult) {
-            case(PREPARE_SUCCESS):
-                break;
-            case(PREPARE_SYNTAX_ERROR):
-                printf("Syntax error.\n");
-            case(PREPARE_UNRECOGNIZED_STATEMENT):
-                printf("Unrecognized keyword.\n");
-        }
-
-        ExecuteResult result;
-
-        switch(statement.action) {
-            case(CACHE_SET):
-                result = executeSet(&statement, table);
-                break;
-            case(CACHE_DELETE): 
-                result = executeDelete(&statement, table);
-                break;
-            case(CACHE_GET):
-                result = executeGet(&statement, table, client);
-                break;
-        }
-
-        clock_t end = clock(); //end the timer
-        double time_spent = (double)(end - start) / CLOCKS_PER_SEC; //calculate the time spent
-        printf("Time spent on query: %f seconds\n", time_spent);
-
-        switch(result) {
-            case(EXECUTE_SUCCESS):
-                if(statement.action == CACHE_GET) {
+            switch(statementResult) {
+                case(PREPARE_SUCCESS):
                     break;
-                }
-                sendDataToClient(client, "Success\n");
-                break;  
-            case(EXECUTE_CACHE_FULL):
-                sendDataToClient(client, "Cache full");
-                break;
-            case(EXECUTE_MEMORY_ERROR):
-                sendDataToClient(client, "Memory error");
-                break;
+                case(PREPARE_SYNTAX_ERROR):
+                    printf("Syntax error.\n");
+                case(PREPARE_UNRECOGNIZED_STATEMENT):
+                    printf("Unrecognized keyword.\n");
+            }
+
+            ExecuteResult result;
+
+            switch(statement.action) {
+                case(CACHE_SET):
+                    result = executeSet(&statement, table);
+                    break;
+                case(CACHE_DELETE): 
+                    result = executeDelete(&statement, table);
+                    break;
+                case(CACHE_GET):
+                    result = executeGet(&statement, table, client);
+                    break;
+            }
+
+            clock_t end = clock(); //end the timer
+            double time_spent = (double)(end - start) / CLOCKS_PER_SEC; //calculate the time spent
+            printf("Time spent on query: %f seconds\n", time_spent);
+
+            switch(result) {
+                case(EXECUTE_SUCCESS):
+                    if(statement.action == CACHE_GET) {
+                        break;
+                    }
+                    sendDataToClient(client, "Success\n");
+                    break;  
+                case(EXECUTE_CACHE_FULL):
+                    sendDataToClient(client, "Cache full");
+                    break;
+                case(EXECUTE_MEMORY_ERROR):
+                    sendDataToClient(client, "Memory error");
+                    break;
+            }
         }
-    }
     }
     free(arg);
     return NULL;
