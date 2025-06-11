@@ -24,9 +24,11 @@ void startQueries(int socketFd) {
             break;
         }
 
+
         send(socketFd, buffer, sizeof(buffer), 0);
         bzero(buffer, sizeof(buffer));
         read(socketFd, buffer, BUFFER_SIZE);
+
         printf("%s\n", buffer);
     }
 }

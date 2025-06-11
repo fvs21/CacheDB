@@ -46,19 +46,14 @@ int main(int argc, char** argv) {
 	initializeCache();
 	printf("Server initialized.\n");
 
-	struct sockaddr_in clientAddress;
-	socklen_t client_addr_len = sizeof(clientAddress);
-	int *client = malloc(sizeof(int)); //incoming client
+		struct sockaddr_in clientAddress;
+		socklen_t client_addr_len = sizeof(clientAddress);
+		int *client = malloc(sizeof(int)); //incoming client
 
-	//accept a client connection
-	if((*client = accept(server, (struct sockaddr *)&clientAddress, &client_addr_len)) < 0) {
-		perror("Failed to accept an incomming client connection.");
-		exit(0);
-	}
-
-	while(1) {
+		//accept a client connection
+		if((*client = accept(server, (struct sockaddr *)&clientAddress, &client_addr_len)) < 0) {
+			perror("Failed to accept an incomming client connection.");
+			exit(0);
+		}
 		handleRequest((void *) client);
-	}
-
-	close(*client);
 }

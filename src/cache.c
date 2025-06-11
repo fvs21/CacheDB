@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include "cache.h"
+#include <time.h>
 
 void initializeCache() {
     for(int i = 0; i<BUCKETS; i++) {
@@ -14,7 +15,8 @@ void initializeCache() {
 }
 
 void *handleRequest(void *arg) {
-    int client = *((int *) arg);
+    while(1) {
+        int client = *((int *) arg);
     char buffer[BUFFER_SIZE];
 
     ssize_t bytesRecieved = recv(
@@ -24,8 +26,13 @@ void *handleRequest(void *arg) {
         0
     );
 
+    printf("Received %zd bytes from client %d\n", bytesRecieved, client);
+
     if(bytesRecieved > 0) {
         Statement statement;
+
+        clock_t start = clock(); //start the timer
+
         StatementResult statementResult = prepareStatement(buffer, &statement);
 
         switch(statementResult) {
@@ -51,6 +58,10 @@ void *handleRequest(void *arg) {
                 break;
         }
 
+        clock_t end = clock(); //end the timer
+        double time_spent = (double)(end - start) / CLOCKS_PER_SEC; //calculate the time spent
+        printf("Time spent on query: %f seconds\n", time_spent);
+
         switch(result) {
             case(EXECUTE_SUCCESS):
                 if(statement.action == CACHE_GET) {
@@ -66,7 +77,8 @@ void *handleRequest(void *arg) {
                 break;
         }
     }
-    
+    }
+    free(arg);
     return NULL;
 }
 
