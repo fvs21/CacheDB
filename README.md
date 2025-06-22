@@ -11,7 +11,7 @@ The idea is to cache data that is known to be accessed frequenly, storing a key 
 The server executable, opens a socket connection to receive data from the client.
 Then, it parses the command and executes the corresponding action.
 
-The cache supports 3 commands: set, get, delete
+The cache supports 4 commands: set, get, delete and evict
 
 ## Usage
 ### For the server
@@ -19,6 +19,7 @@ The cache supports 3 commands: set, get, delete
 ```
 cd src
 make
+cd ../build
 ./cache
 ```
 
@@ -26,6 +27,7 @@ make
 ```
 cd src
 make
+cd ../build
 ./client
 ```
 
@@ -44,4 +46,9 @@ cache > get "key"
 ### Deletting a value
 ```
 cache > delete "key`
+```
+
+### Evicting the LRU
+```
+cache > evict
 ```
