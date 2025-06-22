@@ -1,5 +1,7 @@
 *.o
-.vscode/*
+.vscode
+src/.vscode
 src/debug
 build/
+src/debCache.dSYM
 db.sqlite
