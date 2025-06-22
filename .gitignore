@@ -1,7 +1,5 @@
 *.o
 .vscode/*
-src/obj
 src/debug
-src/debCache
-src/cache
-src/client
+build/
+db.sqlite

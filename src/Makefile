@@ -1,7 +1,8 @@
 CC = gcc
 IDIR = ../include
 CFLAGS = -I$(IDIR) -g
-ODIR = obj
+ODIR = ../build/obj
+BUILD_DIR = ../build
 
 _DEPS = cache.h
 DEPS = $(patsubst %, $(IDIR)/%,$(_DEPS))
@@ -10,14 +11,16 @@ _OBJ = main.o cache.o
 OBJ = $(patsubst %, $(ODIR)/%,$(_OBJ)) 
 
 $(ODIR)/%.o: %.c $(DEPS)
+	@mkdir -p $(ODIR)
+	@mkdir -p $(BUILD_DIR)
 	$(CC) -g -c -o $@ $< $(CFLAGS)
 
-all: cache client
+all: $(BUILD_DIR)/cache $(BUILD_DIR)/client
 
-cache: $(OBJ)
+$(BUILD_DIR)/cache: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
-client: obj/client.o
+$(BUILD_DIR)/client: $(ODIR)/client.o
 	$(CC) -o $@ $< $(CFLAGS)
 
 .PHONY: clean
