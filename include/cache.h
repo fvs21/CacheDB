@@ -4,7 +4,7 @@
 #include <time.h>
 #include <stdbool.h>
 
-#define BUFFER_SIZE 10490
+#define BUFFER_SIZE 600
 
 #define KEY_SIZE 50 //bytes
 #define VALUE_SIZE 500
