@@ -8,9 +8,28 @@
 #include <time.h>
 
 void initializeCache() {
+    cache = malloc(sizeof(Cache));
+
+    if(cache == NULL) {
+        perror("Failed to initialize cache");
+        exit(EXIT_FAILURE);
+    }
+
+    DLLNode* head = malloc(sizeof(DLLNode));
+    DLLNode* tail = malloc(sizeof(DLLNode));
+    if(head == NULL || tail == NULL) {
+        perror("Failed to initialize cache");
+        exit(EXIT_FAILURE);
+    }
+    head->next = tail;
+    tail->prev = head;
+    cache->head = head;
+    cache->tail = tail;
+    cache->current_memory = 0;
+
     for(int i = 0; i<BUCKETS; i++) {
-        Bucket bucket = {NULL, 0};
-        table[i] = bucket; 
+        Bucket bucket = {NULL};
+        cache->table[i] = bucket;
     }
 }
 
@@ -25,8 +44,6 @@ void *handleRequest(void *arg) {
             BUFFER_SIZE, 
             0
         );
-
-        printf("Received %zd bytes from client %d\n", bytesRecieved, client);
 
         if(bytesRecieved > 0) {
             Statement statement;
@@ -48,13 +65,16 @@ void *handleRequest(void *arg) {
 
             switch(statement.action) {
                 case(CACHE_SET):
-                    result = executeSet(&statement, table);
+                    result = executeSet(&statement);
                     break;
                 case(CACHE_DELETE): 
-                    result = executeDelete(&statement, table);
+                    result = executeDelete(&statement);
                     break;
                 case(CACHE_GET):
-                    result = executeGet(&statement, table, client);
+                    result = executeGet(&statement, client);
+                    break;
+                case(CACHE_EVICT):
+                    result = executeEvict();
                     break;
             }
 
@@ -90,7 +110,7 @@ StatementResult prepareStatement(char* buffer, Statement* statement) {
 
         int args_assigned = sscanf(
             buffer,
-            "set %250s %5120c", //set "key" "value"
+            "set %50s %500c", //set "key" "value"
             (key_value_to_insert->key),
             (key_value_to_insert->value)
         );
@@ -107,7 +127,7 @@ StatementResult prepareStatement(char* buffer, Statement* statement) {
 
         int args_assigned = sscanf(
             buffer,
-            "get %250s",
+            "delete %50s",
             key
         );
 
@@ -131,29 +151,40 @@ StatementResult prepareStatement(char* buffer, Statement* statement) {
             return PREPARE_SYNTAX_ERROR;
         }
         return PREPARE_SUCCESS;
+    } else if(strncmp(buffer, "evict", 5) == 0) {
+        statement->action = CACHE_EVICT;
+
+        return PREPARE_SUCCESS;
     }
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
 unsigned int hash(const char* key) {
     unsigned long hash = 5381;
-    for(int c = 0; c<strlen(key); c++) {
+    int length = strlen(key);
+
+    for(int c = 0; c<length; c++) {
         hash = ((hash << 5) + hash) + tolower(*key);
     }
 
     return hash % BUCKETS;
 }
 
-ExecuteResult executeSet(Statement* statement, Bucket* table) {
+ExecuteResult executeSet(Statement* statement) {
     TableData key_value_to_insert = *((TableData *) &(statement->data));
-    int hashIndex = hash(key_value_to_insert.key);
+    int hash_index = hash(key_value_to_insert.key);
 
+    size_t data_size = sizeof(key_value_to_insert); //TODO
 
-    Bucket* bucket = &table[hashIndex];
-    Node* head = bucket->head; //wow
+    Bucket* bucket = &cache->table[hash_index];
+    BucketNode* head = bucket->head;
 
     if(head == NULL) {
-        Node* node = malloc(sizeof(Node));
+        while (cache->current_memory + data_size > CACHE_CAPACITY) {
+            evictLRU();
+        }
+
+        BucketNode* node = malloc(sizeof(BucketNode));
         if(node == NULL) {
             free(node);
             return EXECUTE_MEMORY_ERROR;
@@ -162,36 +193,53 @@ ExecuteResult executeSet(Statement* statement, Bucket* table) {
         memcpy(&(node->tableData.value), &(key_value_to_insert.value), sizeof(key_value_to_insert.value));
         node->next = NULL;
         bucket->head = node; //wow
-        bucket->numOfElements = 1;
+
+        DLLNode* dllnode = createDLLNode(node);
+        node->lruNode = dllnode;
+
     } else {
-        if(bucket->numOfElements == BUCKET_MAX_ELEMS) {
-            return EXECUTE_CACHE_FULL;
+        for(BucketNode* n = bucket->head; n != NULL; n = n->next) {
+            if(strcmp(n->tableData.key, key_value_to_insert.key) == 0) {
+                //if key already exists, update value
+                memcpy(&(n->tableData.value), &(key_value_to_insert.value), sizeof(key_value_to_insert.value));
+                moveToHead(n->lruNode);
+                return EXECUTE_SUCCESS;
+            }
         }
-        Node* node = malloc(sizeof(node));
+        while (cache->current_memory + data_size > CACHE_CAPACITY) {
+            evictLRU();
+        }
+        BucketNode* node = malloc(sizeof(BucketNode));
         if(node == NULL) {
             free(node);
             return EXECUTE_MEMORY_ERROR;
         }
 
         node->tableData = key_value_to_insert;
-        node->next = head;
+        node->next = bucket->head;
         bucket->head = node;
-        bucket->numOfElements++;
+
+        DLLNode* dllnode = createDLLNode(node);
+        node->lruNode = dllnode;
     }
+
+    cache->current_memory += data_size;
 
     return EXECUTE_SUCCESS;
 }
 
-ExecuteResult executeGet(Statement* statement, Bucket* table, int client) {
+ExecuteResult executeGet(Statement* statement, int client) {
     char* key = ((char *) &(statement->data));
 
-    int hashIndex = hash(key);
+    int hash_index = hash(key);
 
-    Bucket bucket = table[hashIndex];
-    Node *head = bucket.head;
+    Bucket* bucket = &cache->table[hash_index]; 
 
-    for(Node* n = head; n != NULL; n = n->next) {
+    BucketNode *head = bucket->head;
+
+    for(BucketNode* n = head; n != NULL; n = n->next) {
         if(strcmp(key, n->tableData.key) == 0) {
+            moveToHead(n->lruNode);
             sendDataToClient(client, n->tableData.value);
             return EXECUTE_SUCCESS;
         }
@@ -201,37 +249,104 @@ ExecuteResult executeGet(Statement* statement, Bucket* table, int client) {
     return EXECUTE_SUCCESS;
 }
 
-ExecuteResult executeDelete(Statement* statement, Bucket* table) {
+ExecuteResult executeDelete(Statement* statement) {
     char* key = ((char *) &(statement->data));
 
-    int hashIndex = hash(key);
-    Bucket *bucket = &table[hashIndex];
-    Node* tableElement = bucket->head;
+    bool res = deleteItem(key);
+
+    if(res) {
+        return EXECUTE_SUCCESS;
+    }
+
+    return EXECUTE_MEMORY_ERROR;
+}
+
+ExecuteResult executeEvict() {
+    evictLRU();
+    return EXECUTE_SUCCESS;
+}
+
+bool deleteItem(char* key) {
+    int hash_index = hash(key);
+    Bucket *bucket = &cache->table[hash_index];
+    BucketNode* tableElement = bucket->head;
 
     if(tableElement == NULL) {
-        return EXECUTE_SUCCESS;
+        return true;
     }
+
+    size_t data_size;
 
     if(strcmp(tableElement->tableData.key, key) == 0) {
+        data_size = sizeof(tableElement->tableData);
         bucket->head = tableElement->next;
-        bucket->numOfElements--;
+        deleteFromLRUList(tableElement->lruNode);
         free(tableElement);
-        return EXECUTE_SUCCESS;
+    } else {
+        for(BucketNode* n = tableElement->next; n != NULL; n = n->next, tableElement = tableElement->next) {
+            if(strcmp(key, n->tableData.key) == 0) {
+                data_size = sizeof(n->tableData);
+                tableElement->next = n->next;
+                deleteFromLRUList(n->lruNode);
+                free(n);
+                break;
+            }
+     }
     }
     
-    for(Node* n = tableElement->next; n != NULL; n = n->next, tableElement = tableElement->next) {
-        if(strcmp(key, n->tableData.key) == 0) {
-            tableElement->next = n->next;
-            bucket->numOfElements--;
-            free(n);
-            break;
-        }
-    }
+    cache->current_memory -= data_size;
 
-    return EXECUTE_SUCCESS;
+    return true;
 }
 
 void sendDataToClient(int client, const char* data) {
     send(client, data, strlen(data), 0);
     return;
+}
+
+DLLNode* createDLLNode(BucketNode* node) {
+    DLLNode* dllNode = malloc(sizeof(DLLNode));
+
+    if(dllNode == NULL) {
+        perror("Error creating node");
+        exit(EXIT_FAILURE);
+    }
+
+    dllNode->next = NULL;
+    dllNode->prev = NULL;
+    dllNode->bucketNode = node;
+
+    moveToHead(dllNode);
+
+    return dllNode;
+}
+
+void moveToHead(DLLNode* node) {
+    if(node->prev != NULL && node->next != NULL) { // check if node is recently created
+        DLLNode* prev = node->prev;
+        DLLNode* next = node->next;
+        prev->next = next;
+        next->prev = prev;
+    }
+
+    DLLNode* mru = cache->head->next;
+
+    cache->head->next = node;
+    node->prev = cache->head;
+    node->next = mru;
+    mru->prev = node;
+}
+
+void evictLRU() {
+    DLLNode* lru = cache->tail->prev;
+    deleteItem(lru->bucketNode->tableData.key);
+}
+
+void deleteFromLRUList(DLLNode* node) {
+    DLLNode* prev = node->prev;
+    DLLNode* next = node->next;
+
+    prev->next = next;
+    next->prev = prev;
+    free(node);
 }

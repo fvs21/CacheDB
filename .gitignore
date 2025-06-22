@@ -3,5 +3,4 @@
 src/.vscode
 src/debug
 build/
-src/debCache.dSYM
 db.sqlite

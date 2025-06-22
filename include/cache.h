@@ -7,12 +7,11 @@
 #define BUFFER_SIZE 10490
 
 #define KEY_SIZE 50 //bytes
-#define VALUE_SIZE 500 //10 kb
-
-#define BUCKET_MAX_SIZE 27500 //bytes
-#define BUCKET_MAX_ELEMS 50
+#define VALUE_SIZE 500
 
 #define BUCKETS 1024
+
+#define CACHE_CAPACITY 1024*1024/2 //0.5 MB
 
 typedef struct {
     char key[KEY_SIZE];
@@ -34,7 +33,8 @@ typedef enum {
 typedef enum {
     CACHE_SET, //keyword for setting a key-value pair
     CACHE_DELETE, //keyword for deleting a key-value pair
-    CACHE_GET //key word for retrieving a value
+    CACHE_GET, //key word for retrieving a value
+    CACHE_EVICT //keyword for evicting the LRU item
 } CacheAction;
 
 typedef struct {
@@ -42,29 +42,48 @@ typedef struct {
     void* data;
 } Statement;
 
-typedef struct Node {
-    TableData tableData;
-    struct Node* next;
-} Node;
+typedef struct DLLNode {
+    struct DLLNode* next;
+    struct DLLNode* prev;
+    struct BucketNode* bucketNode;
+} DLLNode;
 
-typedef struct {
-    Node* head;
-    int numOfElements;
+typedef struct BucketNode {
+    TableData tableData;
+    DLLNode* lruNode;
+    struct BucketNode* next;
+} BucketNode;
+
+typedef struct Bucket {
+    BucketNode* head;
 } Bucket;
 
-Bucket table[BUCKETS];
+
+typedef struct {
+    Bucket table[BUCKETS];
+    DLLNode* head;
+    DLLNode* tail;
+    size_t current_memory;
+} Cache;
+
+Cache* cache;
 
 void *handleRequest(void *arg);
 
 StatementResult prepareStatement(char* buffer, Statement* statement);
 
-struct tm calculateCacheExpirationDate(float milliseconds);
-
 void initializeCache();
-ExecuteResult executeSet(Statement* statement, Bucket* table);
-ExecuteResult executeDelete(Statement* statement, Bucket* table);
-ExecuteResult executeGet(Statement* statement, Bucket* table, int client);
+ExecuteResult executeSet(Statement* statement);
+ExecuteResult executeDelete(Statement* statement);
+ExecuteResult executeGet(Statement* statement, int client);
+ExecuteResult executeEvict();
 void sendDataToClient(int client, const char* data);
 unsigned int hash(const char* key);
+bool deleteItem(char* key);
+
+DLLNode* createDLLNode(BucketNode* node);
+void evictLRU();
+void moveToHead(DLLNode* node);
+void deleteFromLRUList(DLLNode* node);
 
 #endif  
