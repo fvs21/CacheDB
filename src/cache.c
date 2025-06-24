@@ -56,9 +56,11 @@ void *handleRequest(void *arg) {
                 case(PREPARE_SUCCESS):
                     break;
                 case(PREPARE_SYNTAX_ERROR):
-                    printf("Syntax error.\n");
+                    sendDataToClient(client, "Syntax error.\n");
+                    continue;
                 case(PREPARE_UNRECOGNIZED_STATEMENT):
-                    printf("Unrecognized keyword.\n");
+                    sendDataToClient(client, "Unrecognized keyword.\n");
+                    continue;
             }
 
             ExecuteResult result;
@@ -341,6 +343,11 @@ void moveToHead(DLLNode* node) {
 
 void evictLRU() {
     DLLNode* lru = cache->tail->prev;
+    
+    if (lru == cache->head) {
+        return;
+    }
+
     deleteItem(lru->bucketNode->tableData.key);
 }
 
