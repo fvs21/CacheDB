@@ -7,7 +7,7 @@
 #include <netinet/in.h> 
 #include <strings.h>
 
-#define BUFFER_SIZE 10490
+#define BUFFER_SIZE 600
 #define PORT 8080
 
 void startQueries(int socketFd) {
@@ -23,7 +23,6 @@ void startQueries(int socketFd) {
             printf("Exiting...\n");
             break;
         }
-
 
         send(socketFd, buffer, sizeof(buffer), 0);
         bzero(buffer, sizeof(buffer));

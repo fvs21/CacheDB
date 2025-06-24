@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 #define BUFFER_SIZE 600
 
@@ -67,6 +68,7 @@ typedef struct {
 } Cache;
 
 Cache* cache;
+extern pthread_mutex_t mutex;
 
 void *handleRequest(void *arg);
 

@@ -4,7 +4,6 @@
 #include <sys/types.h> 
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <unistd.h>
 #include "cache.h"
 
@@ -45,17 +44,19 @@ int main(int argc, char** argv) {
 
 	initializeCache();
 	printf("Server initialized.\n");
-
 	struct sockaddr_in clientAddress;
-	socklen_t client_addr_len = sizeof(clientAddress);
-	int *client = malloc(sizeof(int)); //incoming client
+	pthread_t pid;
 
-	//accept a client connection
-	if((*client = accept(server, (struct sockaddr *)&clientAddress, &client_addr_len)) < 0) {
-		perror("Failed to accept an incomming client connection.");
-		exit(0);
+	while(1) {
+		socklen_t client_addr_len = sizeof(clientAddress);
+		int *client = malloc(sizeof(int)); //incoming client
+
+		//accept a client connection
+		if((*client = accept(server, (struct sockaddr *)&clientAddress, &client_addr_len)) < 0) {
+			perror("Failed to accept an incomming client connection.");
+			exit(0);
+		}
+		
+		pthread_create(&pid, NULL, handleRequest, client);
 	}
-	handleRequest((void *) client);
-
-	free(client);
 }

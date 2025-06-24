@@ -7,6 +7,8 @@
 #include "cache.h"
 #include <time.h>
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void initializeCache() {
     cache = malloc(sizeof(Cache));
 
@@ -34,10 +36,10 @@ void initializeCache() {
 }
 
 void *handleRequest(void *arg) {
-    while(1) {
-        int client = *((int *) arg);
-        char buffer[BUFFER_SIZE];
+    int client = *((int *) arg);
+    char buffer[BUFFER_SIZE];
 
+    while(1) {
         ssize_t bytesRecieved = recv(
             client, //receive this client request data
             &buffer, //buffer to store incoming data
@@ -47,8 +49,6 @@ void *handleRequest(void *arg) {
 
         if(bytesRecieved > 0) {
             Statement statement;
-
-            clock_t start = clock(); //start the timer
 
             StatementResult statementResult = prepareStatement(buffer, &statement);
 
@@ -63,6 +63,7 @@ void *handleRequest(void *arg) {
 
             ExecuteResult result;
 
+            pthread_mutex_lock(&mutex);
             switch(statement.action) {
                 case(CACHE_SET):
                     result = executeSet(&statement);
@@ -77,10 +78,7 @@ void *handleRequest(void *arg) {
                     result = executeEvict();
                     break;
             }
-
-            clock_t end = clock(); //end the timer
-            double time_spent = (double)(end - start) / CLOCKS_PER_SEC; //calculate the time spent
-            printf("Time spent on query: %f seconds\n", time_spent);
+            pthread_mutex_unlock(&mutex);
 
             switch(result) {
                 case(EXECUTE_SUCCESS):
@@ -96,9 +94,13 @@ void *handleRequest(void *arg) {
                     sendDataToClient(client, "Memory error");
                     break;
             }
+
+            bzero(buffer, BUFFER_SIZE);
         }
     }
     free(arg);
+    close(client);
+    pthread_detach(pthread_self());
     return NULL;
 }
 
