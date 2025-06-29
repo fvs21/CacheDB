@@ -57,6 +57,6 @@ int main(int argc, char** argv) {
 			exit(0);
 		}
 		
-		pthread_create(&pid, NULL, handleRequest, client);
+		handleRequest(client);
 	}
 }

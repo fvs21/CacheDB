@@ -12,7 +12,7 @@
 
 #define BUCKETS 1024
 
-#define CACHE_CAPACITY 1024*1024/2 //0.5 MB
+#define CACHE_CAPACITY 55000000 //0.5 MB
 
 typedef struct {
     char key[KEY_SIZE];

@@ -7,6 +7,8 @@
 #include "cache.h"
 #include <time.h>
 
+static int total_commands = 0;
+
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void initializeCache() {
@@ -49,7 +51,7 @@ void *handleRequest(void *arg) {
 
         if(bytesRecieved > 0) {
             Statement statement;
-
+            
             StatementResult statementResult = prepareStatement(buffer, &statement);
 
             switch(statementResult) {
@@ -65,7 +67,7 @@ void *handleRequest(void *arg) {
 
             ExecuteResult result;
 
-            pthread_mutex_lock(&mutex);
+            clock_t start_execute = clock();
             switch(statement.action) {
                 case(CACHE_SET):
                     result = executeSet(&statement);
@@ -80,14 +82,16 @@ void *handleRequest(void *arg) {
                     result = executeEvict();
                     break;
             }
-            pthread_mutex_unlock(&mutex);
+            clock_t end_execute = clock();
+            double execute_time = (double)(end_execute - start_execute) / CLOCKS_PER_SEC;
+            printf("Time spent executing statement: %f seconds\n", execute_time);
 
             switch(result) {
                 case(EXECUTE_SUCCESS):
                     if(statement.action == CACHE_GET) {
                         break;
                     }
-                    sendDataToClient(client, "Success\n");
+                    sendDataToClient(client, "True\n");
                     break;  
                 case(EXECUTE_CACHE_FULL):
                     sendDataToClient(client, "Cache full");
@@ -96,6 +100,9 @@ void *handleRequest(void *arg) {
                     sendDataToClient(client, "Memory error");
                     break;
             }
+
+            total_commands++;
+            printf("Processed %d commands\n", total_commands);
 
             bzero(buffer, BUFFER_SIZE);
         }
@@ -165,10 +172,10 @@ StatementResult prepareStatement(char* buffer, Statement* statement) {
 
 unsigned int hash(const char* key) {
     unsigned long hash = 5381;
-    int length = strlen(key);
+    int c;
 
-    for(int c = 0; c<length; c++) {
-        hash = ((hash << 5) + hash) + tolower(*key);
+    while((c = *key++)) {
+        hash = ((hash << 5) + hash) + c;
     }
 
     return hash % BUCKETS;
