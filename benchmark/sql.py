@@ -1,8 +1,12 @@
-from utils import generate_kv_pairs
+import csv
 import time
 import psycopg2
 
-data = generate_kv_pairs(400000)
+with open('data.csv', 'r') as csvfile:
+    reader = csv.reader(csvfile)
+    data = [(row[0], row[1]) for row in reader]
+
+count = len(data)
 
 conn = psycopg2.connect("dbname=benchmark user=tester password=testeruser")
 c = conn.cursor()
@@ -10,25 +14,31 @@ c = conn.cursor()
 c.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT)")
 conn.commit()
 
-set_start = time.time()
-for key, value in data:
-    c.execute("INSERT INTO cache (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (key, value))
-conn.commit()
+def run_benchmark(command):
+    start = time.time()
 
-set_end = time.time()
-set_duration = set_end - set_start
+    if command == "set":
+        for key, value in data:
+            c.execute("INSERT INTO cache (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (key, value))
+    elif command == "get":
+        for key, _ in data:
+            c.execute("SELECT value FROM cache WHERE key = %s", (key,))
+            c.fetchone()
 
-get_start = time.time()
-for key, _ in data:
-    c.execute("SELECT value FROM cache WHERE key = %s", (key,))
-    result = c.fetchone()
-    if result:
-        print(f"Key: {key}, Value: {result[0]}")
-get_end = time.time()
-get_duration = get_end - get_start
+    conn.commit()
 
-print(f"Set {len(data)} key-value pairs in {set_duration:.2f} seconds")
-print(f"Get {len(data)} key-value pairs in {get_duration:.2f} seconds")
+    end = time.time()
+    duration = end - start
+    latency = (duration / count) * 1e6
+    throughput = count / duration
+
+    print(f"{command.capitalize()} {count} key-value pairs in {duration:.5f} seconds")
+    print(f"Time: {duration:.5f} seconds")
+    print(f"Latency: {latency:.2f} microseconds")
+    print(f"Throughput: {throughput:.2f} operations/second")
+
+run_benchmark("set")
+run_benchmark("get")
 
 c.execute("DELETE FROM cache")
 conn.commit()

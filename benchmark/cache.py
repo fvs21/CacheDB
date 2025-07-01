@@ -1,35 +1,41 @@
 import socket, time
-from utils import generate_kv_pairs
-
-data = generate_kv_pairs(400000)
+import csv
 
 HOST = "localhost"
 PORT = 8080
+
+with open('data.csv', 'r') as csvfile:
+    reader = csv.reader(csvfile)
+    data = [(row[0], row[1]) for row in reader]
+
+count = len(data)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 client.connect((HOST, PORT))
 
-set_start = time.time()
-for key, value in data:
-    client.sendall(f"set {key} {value}\n".encode())
-    client.recv(4096)
+def run_benchmark(command):
+    start = time.time()
 
-set_end = time.time()
-set_duration = set_end - set_start
+    for key, value in data:
+        if command == "set":
+            client.sendall(f"set {key} {value}\n".encode())
+            client.recv(4096)
+        elif command == "get":
+            client.sendall(f"get {key}\n".encode())
+            client.recv(4096)
 
+    end = time.time()
+    duration = end - start
+    latency = (duration / count) * 1e6
+    throughput = count / duration
 
-get_start = time.time()
-i = 1
-for key, _ in data:
-    client.sendall(f"get {key}\n".encode())
-    print(i, client.recv(4096))
-    i += 1
+    print(f"{command.capitalize()} {count} key-value pairs in {duration:.5f} seconds")
+    print(f"Time: {duration:.5f} seconds")
+    print(f"Latency: {latency:.2f} microseconds")
+    print(f"Throughput: {throughput:.2f} operations/second")
 
-get_end = time.time()
-get_duration = get_end - get_start
-
-print(f"Set {len(data)} key-value pairs in {set_duration:.2f} seconds")
-print(f"Get {len(data)} key-value pairs in {get_duration:.2f} seconds")
+run_benchmark("set")
+run_benchmark("get")
 
 client.close()

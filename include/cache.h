@@ -5,12 +5,12 @@
 #include <stdbool.h>
 #include <pthread.h>
 
-#define BUFFER_SIZE 600
+#define BUFFER_SIZE 560
 
 #define KEY_SIZE 50 //bytes
 #define VALUE_SIZE 500
 
-#define BUCKETS 1024
+#define BUCKETS 20000
 
 #define CACHE_CAPACITY 55000000 //0.5 MB
 

@@ -49,63 +49,63 @@ void *handleRequest(void *arg) {
             0
         );
 
-        if(bytesRecieved > 0) {
-            Statement statement;
-            
-            StatementResult statementResult = prepareStatement(buffer, &statement);
-
-            switch(statementResult) {
-                case(PREPARE_SUCCESS):
-                    break;
-                case(PREPARE_SYNTAX_ERROR):
-                    sendDataToClient(client, "Syntax error.\n");
-                    continue;
-                case(PREPARE_UNRECOGNIZED_STATEMENT):
-                    sendDataToClient(client, "Unrecognized keyword.\n");
-                    continue;
-            }
-
-            ExecuteResult result;
-
-            clock_t start_execute = clock();
-            switch(statement.action) {
-                case(CACHE_SET):
-                    result = executeSet(&statement);
-                    break;
-                case(CACHE_DELETE): 
-                    result = executeDelete(&statement);
-                    break;
-                case(CACHE_GET):
-                    result = executeGet(&statement, client);
-                    break;
-                case(CACHE_EVICT):
-                    result = executeEvict();
-                    break;
-            }
-            clock_t end_execute = clock();
-            double execute_time = (double)(end_execute - start_execute) / CLOCKS_PER_SEC;
-            printf("Time spent executing statement: %f seconds\n", execute_time);
-
-            switch(result) {
-                case(EXECUTE_SUCCESS):
-                    if(statement.action == CACHE_GET) {
-                        break;
-                    }
-                    sendDataToClient(client, "True\n");
-                    break;  
-                case(EXECUTE_CACHE_FULL):
-                    sendDataToClient(client, "Cache full");
-                    break;
-                case(EXECUTE_MEMORY_ERROR):
-                    sendDataToClient(client, "Memory error");
-                    break;
-            }
-
-            total_commands++;
-            printf("Processed %d commands\n", total_commands);
-
-            bzero(buffer, BUFFER_SIZE);
+        if(bytesRecieved <= 0) {
+            continue;
         }
+
+        Statement statement;
+            
+        StatementResult statementResult = prepareStatement(buffer, &statement);
+
+        switch(statementResult) {
+            case(PREPARE_SUCCESS):
+                break;
+            case(PREPARE_SYNTAX_ERROR):
+                sendDataToClient(client, "Syntax error.\n");
+                continue;
+            case(PREPARE_UNRECOGNIZED_STATEMENT):
+                sendDataToClient(client, "Unrecognized keyword.\n");
+                continue;
+        }
+
+        ExecuteResult result;
+
+        pthread_mutex_lock(&mutex); //lock the cache
+        switch(statement.action) {
+            case(CACHE_SET):
+                result = executeSet(&statement);
+                break;
+            case(CACHE_DELETE): 
+                result = executeDelete(&statement);
+                break;
+            case(CACHE_GET):
+                result = executeGet(&statement, client);
+                break;
+            case(CACHE_EVICT):
+                result = executeEvict();
+                break;
+        }
+        pthread_mutex_unlock(&mutex); //unlock the cache
+
+        switch(result) {
+            case(EXECUTE_SUCCESS):
+                if(statement.action == CACHE_GET) {
+                    break;
+                }
+                sendDataToClient(client, "True\n");
+                break;  
+            case(EXECUTE_CACHE_FULL):
+                sendDataToClient(client, "Cache full");
+                break;
+            case(EXECUTE_MEMORY_ERROR):
+                sendDataToClient(client, "Memory error");
+                break;
+        }
+
+        total_commands++;
+        printf("Processed %d commands\n", total_commands);
+
+        bzero(buffer, BUFFER_SIZE);
     }
     free(arg);
     close(client);
@@ -350,6 +350,7 @@ void moveToHead(DLLNode* node) {
 
 void evictLRU() {
     DLLNode* lru = cache->tail->prev;
+    printf("Evicted\n");
     
     if (lru == cache->head) {
         return;
